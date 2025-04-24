@@ -1,40 +1,227 @@
-import BlockedNotification from "./BlockedNotification";
-import AllowedNotification from "./AllowedNotification"; // Import the new component
-import { useState } from "react";
+import AllowedNotification from "./AllowedNotification";
+import { useState, useEffect } from "react";
+import SockJS from "sockjs-client";
+import { Client } from "@stomp/stompjs";
 
 const GateDashboard = () => {
   const [allowedVehicle, setAllowedVehicle] = useState(null);
+  const [blockedVehicles, setBlockedVehicles] = useState([]);
+  const [reason, setReason] = useState("");
+  const [entryStatus, setEntryStatus] = useState("");
+  const [connectionStatus, setConnectionStatus] = useState("Connecting...");
 
-  
-  const handleNewVehicle = (vehicle) => {
-    setAllowedVehicle(vehicle);
+  useEffect(() => {
+    const stompClient = new Client({
+      webSocketFactory: () => new SockJS('http://localhost:8080/ws'), // Changed from ws-endpoint to ws
+      connectHeaders: {},
+      debug: function (str) {
+        console.log(str);
+      },
+      reconnectDelay: 5000,
+      heartbeatIncoming: 4000,
+      heartbeatOutgoing: 4000
+    });
+
+    stompClient.onConnect = () => {
+      setConnectionStatus("Connected");
+      console.log("Connected to WebSocket");
+
+      // Subscribe to topics
+      stompClient.subscribe('/topic/blocked-vehicle', (message) => {
+        const vehicle = JSON.parse(message.body);
+        console.log("Blocked vehicle received:", vehicle);
+        setBlockedVehicles(prev => [...prev, vehicle]);
+      });
+
+      stompClient.subscribe('/topic/allowed-vehicle', (message) => {
+        const vehicle = JSON.parse(message.body);
+        console.log("Allowed vehicle received:", vehicle);
+        setAllowedVehicle(vehicle);
+      });
+    };
+
+    stompClient.onStompError = (frame) => {
+      setConnectionStatus("Error");
+      console.error('STOMP error:', frame.headers['message']);
+      console.error('Details:', frame.body);
+    };
+
+    stompClient.onWebSocketError = (event) => {
+      setConnectionStatus("Error");
+      console.error('WebSocket error:', event);
+    };
+
+    stompClient.onWebSocketClose = (event) => {
+      setConnectionStatus("Disconnected");
+      console.log('WebSocket connection closed:', event);
+    };
+
+    // Activate the client
+    try {
+      stompClient.activate();
+    } catch (error) {
+      setConnectionStatus("Error");
+      console.error('Failed to activate STOMP client:', error);
+    }
+
+    // Cleanup on component unmount
+    return () => {
+      if (stompClient.active) {
+        stompClient.deactivate();
+      }
+    };
+  }, []);
+
+  const handleStopEntry = (vehicle) => {
+    setEntryStatus(`Entry Stopped for vehicle ${vehicle.vehicleNumber}`);
+    
+    // Send stop entry response to the backend
+    fetch("http://localhost:8080/api/vehicles/stop-entry", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        vehicleNumber: vehicle.vehicleNumber,
+        entryGate: vehicle.entryGate
+      })
+    })
+    .then(response => {
+      if (!response.ok) throw new Error("Failed to process stop entry");
+      return response.json();
+    })
+    .then(() => {
+      setBlockedVehicles(prev => 
+        prev.filter(v => v.vehicleNumber !== vehicle.vehicleNumber)
+      );
+    })
+    .catch(error => {
+      console.error("Error processing stop entry:", error);
+      alert("Failed to process stop entry. Please try again.");
+    });
+  };
+
+  const handleAllowEntry = (vehicle) => {
+    if (!reason.trim()) {
+      alert("Please provide a reason for allowing entry");
+      return;
+    }
+
+    setEntryStatus(`Allowed ${vehicle.vehicleNumber} with reason: ${reason}`);
+
+    fetch("http://localhost:8080/api/vehicles/allow-entry", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        vehicleNumber: vehicle.vehicleNumber,
+        entryGate: vehicle.entryGate,
+        vehicleType: vehicle.vehicleType,
+        imageName: vehicle.imageName,
+        reason: reason
+      }),
+    })
+    .then(response => {
+      if (!response.ok) throw new Error("Failed to process allow entry");
+      return response.json();
+    })
+    .then(() => {
+      setBlockedVehicles(prev => 
+        prev.filter(v => v.vehicleNumber !== vehicle.vehicleNumber)
+      );
+      setReason("");
+    })
+    .catch(error => {
+      console.error("Error processing allow entry:", error);
+      alert("Failed to process allow entry. Please try again.");
+    });
   };
 
   return (
     <div className="container-fluid mt-4">
+      {/* Connection Status */}
+      <div className={`alert ${connectionStatus === "Connected" ? "alert-success" : "alert-warning"} mb-4`}>
+        <strong>WebSocket Status:</strong> {connectionStatus}
+      </div>
+
       <div className="row">
-        {/* Left Half: Blocked Notification */}
+        {/* Left Half: Blocked Notifications */}
         <div className="col-md-6 mb-3">
-          <BlockedNotification />
+          <div className="card shadow">
+            <div className="card-body">
+              <h5 className="card-title mb-4">🚨 Blocked Vehicle Alerts</h5>
+
+              {blockedVehicles.length > 0 ? (
+                blockedVehicles.map((vehicle, index) => (
+                  <div
+                    key={index}
+                    className="alert alert-danger d-flex flex-column gap-3 mb-3"
+                  >
+                    <div className="fs-5">
+                      <strong>⚠️ Blocked Vehicle Detected:</strong>{" "}
+                      <span
+                        className="badge bg-danger fs-4 p-2"
+                        style={{
+                          border: "2px solid white",
+                          boxShadow: "0 0 10px rgba(255,0,0,0.7)",
+                        }}
+                      >
+                        {vehicle.vehicleNumber}
+                      </span>
+                    </div>
+
+                    <div className="d-flex flex-wrap gap-2">
+                      <button
+                        className="btn btn-danger"
+                        onClick={() => handleStopEntry(vehicle)}
+                      >
+                        Stop Entry
+                      </button>
+
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="Reason for allowing..."
+                        style={{ maxWidth: "250px" }}
+                        value={reason}
+                        onChange={(e) => setReason(e.target.value)}
+                      />
+
+                      <button
+                        className="btn btn-success"
+                        onClick={() => handleAllowEntry(vehicle)}
+                        disabled={!reason.trim()}
+                      >
+                        Allow Entry
+                      </button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-muted">No blocked vehicles detected right now.</p>
+              )}
+            </div>
+          </div>
         </div>
 
-        {/* Right Half: Allowed Notification */}
+        {/* Right Half: Allowed Notifications */}
         <div className="col-md-6 mb-3">
-          <AllowedNotification vehicle={allowedVehicle} />
+          <div className="card shadow">
+            <div className="card-body">
+              <h5 className="card-title mb-4">✅ Allowed Vehicle Notifications</h5>
+              <AllowedNotification vehicle={allowedVehicle} />
+            </div>
+          </div>
         </div>
       </div>
 
-     
-      <div className="row mt-3">
-        <div className="col-12 text-center">
-          <button
-            className="btn btn-primary"
-            onClick={() => handleNewVehicle("ABC123")}
-          >
-            Simulate Allowed Vehicle
-          </button>
+      {/* Status Messages */}
+      {entryStatus && (
+        <div className="row mt-3">
+          <div className="col-12">
+            <div className="alert alert-info">
+              <strong>Status:</strong> {entryStatus}
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

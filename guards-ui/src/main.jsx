@@ -5,9 +5,9 @@ import App from './App.jsx'
 import { GlobalProvider } from './Components/ContextAPI/GlobalProvider.jsx'
 
 createRoot(document.getElementById('root')).render(
-  <StrictMode>
+ // <StrictMode>
    <GlobalProvider>
     <App />
   </GlobalProvider>,
-  </StrictMode>,
+  //</StrictMode>,
 )
