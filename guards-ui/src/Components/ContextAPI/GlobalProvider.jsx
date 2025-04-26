@@ -9,16 +9,27 @@ export const GlobalProvider = ({ children }) => {
   const [gateNumber, setGateNumber] = useState(() => {
     return localStorage.getItem("gateNumber") || null;
   });
+  const [userType, setUserType] = useState(() => {
+    return localStorage.getItem("userType") || null;
+  });
 
   // Update localStorage whenever state changes
   useEffect(() => {
     localStorage.setItem("isLoggedIn", JSON.stringify(isLoggedIn));
     localStorage.setItem("gateNumber", gateNumber);
-  }, [isLoggedIn, gateNumber]);
+    localStorage.setItem("userType", userType);
+  }, [isLoggedIn, gateNumber, userType]);
 
   return (
     <GlobalContext.Provider
-      value={{ isLoggedIn, setIsLoggedIn, gateNumber, setGateNumber }}
+      value={{ 
+        isLoggedIn, 
+        setIsLoggedIn, 
+        gateNumber, 
+        setGateNumber,
+        userType,
+        setUserType
+      }}
     >
       {children}
     </GlobalContext.Provider>

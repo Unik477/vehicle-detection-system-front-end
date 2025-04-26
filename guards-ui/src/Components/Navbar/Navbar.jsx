@@ -1,7 +1,7 @@
 import { useGlobalContext } from "../ContextAPI/GlobalContext";
 
 const Navbar = () => {
-  const { isLoggedIn, gateNumber, setIsLoggedIn, setGateNumber } = useGlobalContext();
+  const { isLoggedIn, gateNumber, setIsLoggedIn, setGateNumber, userType  } = useGlobalContext();
 
   const handleLogout = () => {
     setIsLoggedIn(false);
@@ -18,9 +18,11 @@ const Navbar = () => {
         </a>
 
         {/* Render this div only if the user is logged in and gateNumber is not null */}
-        {isLoggedIn && gateNumber && (
+        {isLoggedIn &&  (
           <div className="d-flex align-items-center gap-3">
-            <span className="text-light fs-5 fw-semibold">GATE: {gateNumber}</span>
+           {userType=="guard" && 
+           <span className="text-light fs-5 fw-semibold">GATE: {gateNumber}</span>
+           } 
             <button className="btn btn-outline-light" onClick={handleLogout}>
               Logout
             </button>
