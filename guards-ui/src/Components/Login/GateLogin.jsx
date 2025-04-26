@@ -2,7 +2,7 @@ import { useState } from "react";
 import axios from "axios";
 import { useGlobalContext } from "../ContextAPI/GlobalContext";
 
-const LoginPage = ({ onLoginSuccess }) => {
+const GateLogin = ({ onLoginSuccess }) => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -117,4 +117,4 @@ const LoginPage = ({ onLoginSuccess }) => {
   );
 };
 
-export default LoginPage;
+export default GateLogin;
