@@ -1,22 +1,43 @@
 import './App.css'
+import 'bootstrap-icons/font/bootstrap-icons.css';
 import GateDashboard from './Components/Dashboard/GateDashboard/GateDashboard'
-import AdminDashboard from './Components/Dashboard/AdminDashboard/AdminDashboard'
+import SearchVehicles from './Components/Dashboard/AdminDashboard/Search/SearchPage'
 import Navbar from './Components/Navbar/Navbar'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useGlobalContext } from './Components/ContextAPI/GlobalContext'
 import Home from './Components/Home/Home'
 import GateLogin from './Components/Login/GateLogin'
 import AdminLogin from './Components/Login/AdminLogin'
 import { ToastContainer, toast } from 'react-toastify'
+import BlockedDashboard from './Components/Dashboard/AdminDashboard/Blocked/BlockedDashboard'
+// import SearchVehicles from './Components/Dashboard/AdminDashboard/Search/SearchVehicles'
 import 'react-toastify/dist/ReactToastify.css'
+import AdminDashboard from './Components/Dashboard/AdminDashboard/Dashboard/AdminDashboard';
 
 // Protected Route Component
-const ProtectedRoute = ({ children }) => {
-  const { isLoggedIn } = useGlobalContext();
-  if (!isLoggedIn) {
+// const ProtectedRoute = ({ children }) => {
+//   const { isLoggedIn } = useGlobalContext();
+//   if (!isLoggedIn) {
 
+//     return <Navigate to="/" />;
+//   }
+//   return children;
+// };
+
+const ProtectedRoute = ({ children }) => {
+  const { isLoggedIn, userType } = useGlobalContext();
+  const location = useLocation();
+  
+  if (!isLoggedIn) {
     return <Navigate to="/" />;
   }
+
+  // Check if trying to access admin routes without admin privileges
+  const adminRoutes = ['/admin-dashboard', '/blocking', '/search-vehicles'];
+  if (adminRoutes.includes(location.pathname) && userType !== 'admin') {
+    return <Navigate to="/guard-dashboard" />;
+  }
+
   return children;
 };
 
@@ -66,7 +87,7 @@ function App() {
           </PublicRoute>
         } />
 
-        {/* Protected route - only accessible when logged in */}
+        {/* Protected routes - only accessible when logged in */}
         <Route path="/guard-dashboard" element={
           <ProtectedRoute>
             <GateDashboard />
@@ -75,6 +96,18 @@ function App() {
         <Route path="/admin-dashboard" element={
           <ProtectedRoute>
             <AdminDashboard />
+          </ProtectedRoute>
+        } />
+        
+        {/* New Admin Routes */}
+        <Route path="/blocking" element={
+          <ProtectedRoute>
+            <BlockedDashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="/search-vehicles" element={
+          <ProtectedRoute>
+            <SearchVehicles />
           </ProtectedRoute>
         } />
 
