@@ -1,9 +1,11 @@
 import AllowedNotification from "./AllowedNotification";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import SockJS from "sockjs-client";
 import { Client } from "@stomp/stompjs";
+import { GlobalContext } from "../ContextAPI/GlobalContext";
 
 const GateDashboard = () => {
+  const { gateNumber } = useContext(GlobalContext); // get gateNumber dynamically
   const [allowedVehicle, setAllowedVehicle] = useState(null);
   const [blockedVehicles, setBlockedVehicles] = useState([]);
   const [reason, setReason] = useState("");
@@ -74,31 +76,65 @@ const GateDashboard = () => {
 
   const handleStopEntry = (vehicle) => {
     setEntryStatus(`Entry Stopped for vehicle ${vehicle.vehicleNumber}`);
-    
-    // Send stop entry response to the backend
-    fetch("http://localhost:8080/api/vehicles/stop-entry", {
+  
+    fetch(`http://localhost:8080/api/blocked-vehicles/response/${vehicle.vehicleNumber}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        vehicleNumber: vehicle.vehicleNumber,
-        entryGate: vehicle.entryGate
+        allow: false,
+        guardId: "Guard_001",
+        reason: "Vehicle not permitted at this gate"
       })
     })
     .then(response => {
       if (!response.ok) throw new Error("Failed to process stop entry");
-      return response.json();
+      return response.text(); // ✅ use .text()
     })
     .then(() => {
       setBlockedVehicles(prev => 
         prev.filter(v => v.vehicleNumber !== vehicle.vehicleNumber)
       );
+      // Do not clear reason here
     })
     .catch(error => {
       console.error("Error processing stop entry:", error);
       alert("Failed to process stop entry. Please try again.");
     });
   };
+  
 
+  // const handleAllowEntry = (vehicle) => {
+  //   if (!reason.trim()) {
+  //     alert("Please provide a reason for allowing entry");
+  //     return;
+  //   }
+  
+  //   setEntryStatus(`Allowed ${vehicle.vehicleNumber} with reason: ${reason}`);
+  
+  //   fetch(`http://localhost:8080/api/blocked-vehicles/response/${vehicle.vehicleNumber}`, {
+  //     method: "POST",
+  //     headers: { "Content-Type": "application/json" },
+  //     body: JSON.stringify({
+  //       allow: true,
+  //       guardId: "Guard_001",
+  //       reason: reason
+  //     })
+  //   })
+  //   .then(response => {
+  //     if (!response.ok) throw new Error("Failed to process allow entry");
+  //     return response.text(); // ✅ use .text()
+  //   })
+  //   .then(() => {
+  //     setBlockedVehicles(prev => 
+  //       prev.filter(v => v.vehicleNumber !== vehicle.vehicleNumber)
+  //     );
+  //     setReason(""); // ✅ Clear reason after allowing
+  //   })
+  //   .catch(error => {
+  //     console.error("Error processing allow entry:", error);
+  //     alert("Failed to process allow entry. Please try again.");
+  //   });
+  // };
   const handleAllowEntry = (vehicle) => {
     if (!reason.trim()) {
       alert("Please provide a reason for allowing entry");
@@ -107,33 +143,47 @@ const GateDashboard = () => {
 
     setEntryStatus(`Allowed ${vehicle.vehicleNumber} with reason: ${reason}`);
 
-    fetch("http://localhost:8080/api/vehicles/allow-entry", {
+    fetch(`http://localhost:8080/api/blocked-vehicles/response/${vehicle.vehicleNumber}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        vehicleNumber: vehicle.vehicleNumber,
-        entryGate: vehicle.entryGate,
-        vehicleType: vehicle.vehicleType,
-        imageName: vehicle.imageName,
+        allow: true,
+        guardId: "Guard_001",
         reason: reason
-      }),
+      })
     })
     .then(response => {
       if (!response.ok) throw new Error("Failed to process allow entry");
-      return response.json();
+      return response.text();
     })
     .then(() => {
-      setBlockedVehicles(prev => 
-        prev.filter(v => v.vehicleNumber !== vehicle.vehicleNumber)
-      );
+      setBlockedVehicles(prev => prev.filter(v => v.vehicleNumber !== vehicle.vehicleNumber));
       setReason("");
+
+      // Now make additional POST to create vehicle entry
+      const entryData = {
+        vehicleNumber: vehicle.vehicleNumber,
+        entryGate: gateNumber ? parseInt(gateNumber) : 1, // use dynamic gateNumber, fallback to 1
+        vehicleType: vehicle.vehicleType || "PRIVATE", // default to PRIVATE if type missing
+        imageName: vehicle.imageName || "default.jpg"   // default if missing
+      };
+
+      return fetch("http://localhost:8080/api/vehicles/entry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(entryData)
+      });
+    })
+    .then(response => {
+      if (!response.ok) throw new Error("Failed to insert vehicle entry");
+      console.log("Vehicle entry inserted successfully");
     })
     .catch(error => {
-      console.error("Error processing allow entry:", error);
-      alert("Failed to process allow entry. Please try again.");
+      console.error("Error during allow entry + vehicle entry:", error);
+      alert("Failed to allow entry and insert vehicle. Please try again.");
     });
   };
-
+  
   return (
     <div className="container-fluid mt-4">
       {/* Connection Status */}
