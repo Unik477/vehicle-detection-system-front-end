@@ -2,7 +2,7 @@ import AllowedNotification from "./AllowedNotification";
 import { useState, useEffect, useContext } from "react";
 import SockJS from "sockjs-client";
 import { Client } from "@stomp/stompjs";
-import { GlobalContext } from "../ContextAPI/GlobalContext";
+import { GlobalContext } from "../../ContextAPI/GlobalContext";
 
 const GateDashboard = () => {
   const { gateNumber } = useContext(GlobalContext); // get gateNumber dynamically
