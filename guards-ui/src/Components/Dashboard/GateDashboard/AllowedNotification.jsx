@@ -1,33 +1,83 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import SockJS from "sockjs-client";
+import { Client } from "@stomp/stompjs";
 
-const AllowedNotification = ({ vehicle }) => {
-  const [isVisible, setIsVisible] = useState(false);
+const AllowedNotification = () => {
+  const [allowedVehicles, setAllowedVehicles] = useState([]);
 
   useEffect(() => {
-    if (vehicle) {
-      setIsVisible(true);
-      const timer = setTimeout(() => setIsVisible(false), 10000);
-      return () => clearTimeout(timer);
-    }
-  }, [vehicle]);
+    const stompClient = new Client({
+      brokerURL: "ws://localhost:8080/ws",
+      connectHeaders: {},
+      debug: (str) => console.log(str),
+      reconnectDelay: 5000,
+      heartbeatIncoming: 4000,
+      heartbeatOutgoing: 4000,
+      webSocketFactory: () => new SockJS("http://localhost:8080/ws"),
+    });
 
-  if (!isVisible) return null;
+    stompClient.onConnect = () => {
+      console.log("Connected to WebSocket");
+
+      // Subscribe to allowed vehicle notifications
+      stompClient.subscribe("/topic/allowed-vehicle", (message) => {
+        const vehicle = JSON.parse(message.body);
+        console.log("Allowed vehicle received:", vehicle);
+        
+        // Add new vehicle to the list with a unique ID
+        const vehicleWithId = {
+          ...vehicle,
+          id: Date.now(), // Use timestamp as unique ID
+        };
+        
+        setAllowedVehicles(prev => [...prev, vehicleWithId]);
+
+        // Remove notification after 10 seconds
+        setTimeout(() => {
+          setAllowedVehicles(prev => 
+            prev.filter(v => v.id !== vehicleWithId.id)
+          );
+        }, 30000);
+      });
+    };
+
+    stompClient.onStompError = (frame) => {
+      console.error("Broker reported error:", frame.headers["message"]);
+      console.error("Additional details:", frame.body);
+    };
+
+    stompClient.activate();
+
+    return () => {
+      if (stompClient.active) {
+        stompClient.deactivate();
+      }
+    };
+  }, []);
+
+  const handleDelete = (id) => {
+    setAllowedVehicles(prev => prev.filter(vehicle => vehicle.id !== id));
+  };
+
+  if (allowedVehicles.length === 0) return null;
 
   return (
-    <div
-      className="alert alert-success alert-dismissible fade show d-flex align-items-center shadow-sm border-0 rounded-3 p-3"
-      role="alert"
-    >
-      <i className="bi bi-check-circle-fill me-3 fs-4"></i>
-      <div>
-        <strong>Vehicle {vehicle}</strong> is allowed to pass!
-      </div>
-      <button
-        type="button"
-        className="btn-close ms-auto"
-        aria-label="Close"
-        onClick={() => setIsVisible(false)}
-      ></button>
+    <div className="notifications-container">
+      {allowedVehicles.map(vehicle => (
+        <div key={vehicle.id} className="alert alert-success mb-3 position-relative">
+          <button 
+            type="button" 
+            className="btn-close position-absolute top-0 end-0 m-2"
+            onClick={() => handleDelete(vehicle.id)}
+            aria-label="Close"
+          ></button>
+          
+          <h5>✅ Vehicle Entry</h5>
+          <p className="mb-1">Vehicle Number: {vehicle.vehicleNumber}</p>
+          <p className="mb-1">Entry Gate: {vehicle.entryGate}</p>
+          <p className="mb-0">Time: {new Date(vehicle.entryTime).toLocaleTimeString()}</p>
+        </div>
+      ))}
     </div>
   );
 };
