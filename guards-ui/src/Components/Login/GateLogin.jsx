@@ -10,7 +10,7 @@ const GateLogin = () => {
   const [loading, setLoading] = useState(false);
   const [selectedGate, setSelectedGate] = useState("");
 
-  const { setIsLoggedIn, setGateNumber,setUserType } = useGlobalContext();
+  const { setIsLoggedIn, setGateNumber,setUserType, setGuardID } = useGlobalContext();
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
@@ -27,6 +27,7 @@ const GateLogin = () => {
       if (res.status === 200) {
         setIsLoggedIn(true);
         setGateNumber(selectedGate);
+        setGuardID(username);
         setUserType('guard');
         navigate("/guard-dashboard");
       }

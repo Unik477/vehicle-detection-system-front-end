@@ -9,6 +9,9 @@ export const GlobalProvider = ({ children }) => {
   const [gateNumber, setGateNumber] = useState(() => {
     return localStorage.getItem("gateNumber") || null;
   });
+  const [guardID, setGuardID] = useState(() => {
+    return localStorage.getItem("guardID") || null;
+  });
   const [userType, setUserType] = useState(() => {
     return localStorage.getItem("userType") || null;
   });
@@ -18,7 +21,8 @@ export const GlobalProvider = ({ children }) => {
     localStorage.setItem("isLoggedIn", JSON.stringify(isLoggedIn));
     localStorage.setItem("gateNumber", gateNumber);
     localStorage.setItem("userType", userType);
-  }, [isLoggedIn, gateNumber, userType]);
+    localStorage.setItem("guardID", guardID);
+  }, [isLoggedIn, gateNumber, userType,guardID]);
 
   return (
     <GlobalContext.Provider
@@ -28,7 +32,9 @@ export const GlobalProvider = ({ children }) => {
         gateNumber, 
         setGateNumber,
         userType,
-        setUserType
+        setUserType,
+        guardID, 
+        setGuardID
       }}
     >
       {children}
