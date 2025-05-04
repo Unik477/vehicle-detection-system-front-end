@@ -2,7 +2,7 @@ import { useState } from 'react';
 import axios from 'axios';
 import VehicleTable from './VehicleTable';
 
-const AdminDashboard = () => {
+const SearchPage = () => {
   const [selectedDate, setSelectedDate] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('');
@@ -11,7 +11,6 @@ const AdminDashboard = () => {
   const [error, setError] = useState(null);
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
-  const [countData, setCountData] = useState(null);
 
   const handleRefresh = async () => {
     if (startTime && endTime) {
@@ -28,7 +27,8 @@ const AdminDashboard = () => {
   const handleDateSearch = async () => {
     setLoading(true);
     setError(null);
-    // Reset other search fields
+    setEndTime('')
+    setStartTime('')
     setSearchQuery('');
     setFilterType('');
     try {
@@ -44,7 +44,8 @@ const AdminDashboard = () => {
   const handleTypeSearch = async () => {
     setLoading(true);
     setError(null);
-    // Reset other search fields
+    setEndTime('')
+    setStartTime('')
     setSearchQuery('');
     setSelectedDate('');
     try {
@@ -60,7 +61,8 @@ const AdminDashboard = () => {
   const handleVehicleSearch = async () => {
     setLoading(true);
     setError(null);
-    // Reset other search fields
+    setEndTime('')
+    setStartTime('')
     setSelectedDate('');
     setFilterType('');
     try {
@@ -76,16 +78,13 @@ const AdminDashboard = () => {
   const handleTimeIntervalSearch = async () => {
     setLoading(true);
     setError(null);
-    setCountData(null);
-    // Reset other search fields
     setSearchQuery('');
     setSelectedDate('');
     setFilterType('');
-    setVehicles([]);
     
     try {
       const response = await axios.get(
-        `http://localhost:8080/api/vehicles/count/interval`,
+        `http://localhost:8080/api/vehicles/interval`,
         {
           params: {
             startTime: startTime,
@@ -93,10 +92,11 @@ const AdminDashboard = () => {
           }
         }
       );
-      setCountData(response.data);
+      setVehicles(response.data);
     } catch (err) {
       console.error('Search error:', err);
-      setError('Failed to fetch vehicle count');
+      setError('Failed to fetch vehicles');
+      setVehicles([]);
     }
     setLoading(false);
   };
@@ -169,7 +169,8 @@ const AdminDashboard = () => {
             </button>
           </div>
         </div>
-
+    <hr />
+        <h2 className="mb-4">Custom Search </h2>
         {/* Time Interval Search */}
         <div className="col-md-8">
           <div className="input-group">
@@ -192,12 +193,13 @@ const AdminDashboard = () => {
               onClick={handleTimeIntervalSearch}
               disabled={!startTime || !endTime}
             >
-              Search Interval
+               Search
             </button>
           </div>
         </div>
       </div>
 
+      <hr />
       {error && (
         <div className="alert alert-danger" role="alert">
           {error}
@@ -211,31 +213,13 @@ const AdminDashboard = () => {
           </div>
         </div>
       ) : (
-        <>
-          {countData && (
-            <div className="card mb-4">
-              <div className="card-body">
-                <h5 className="card-title">Vehicle Count Summary</h5>
-                <p className="card-text">
-                  Time Period: {new Date(countData.startTime).toLocaleString()} - {new Date(countData.endTime).toLocaleString()}
-                </p>
-                <p className="card-text">
-                  Total Vehicles: <strong>{countData.count}</strong>
-                </p>
-              </div>
-            </div>
-          )}
-
-          {!countData && !loading && (
-            <VehicleTable 
-              vehicles={vehicles} 
-              onRefresh={handleRefresh}
-            />
-          )}
-        </>
+        <VehicleTable 
+          vehicles={vehicles} 
+          onRefresh={handleRefresh}
+        />
       )}
     </div>
   );
 };
 
-export default AdminDashboard;
+export default SearchPage;

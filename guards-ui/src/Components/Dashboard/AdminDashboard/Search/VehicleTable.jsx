@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 
 const VehicleTable = ({ vehicles, onRefresh }) => {
   const [currentPage, setCurrentPage] = useState(1);
-  const entriesPerPage = 5;
+  const entriesPerPage = 10;
 
   // Calculate indexes for current page
   const indexOfLastEntry = currentPage * entriesPerPage;
