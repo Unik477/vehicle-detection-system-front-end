@@ -9,9 +9,14 @@ const AdminDashboard = () => {
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
+  const [countData, setCountData] = useState(null);
 
   const handleRefresh = async () => {
-    if (selectedDate) {
+    if (startTime && endTime) {
+      await handleTimeIntervalSearch();
+    } else if (selectedDate) {
       await handleDateSearch();
     } else if (filterType) {
       await handleTypeSearch();
@@ -64,6 +69,34 @@ const AdminDashboard = () => {
     } catch {
       setError('Failed to fetch vehicles');
       setVehicles([]);
+    }
+    setLoading(false);
+  };
+
+  const handleTimeIntervalSearch = async () => {
+    setLoading(true);
+    setError(null);
+    setCountData(null);
+    // Reset other search fields
+    setSearchQuery('');
+    setSelectedDate('');
+    setFilterType('');
+    setVehicles([]);
+    
+    try {
+      const response = await axios.get(
+        `http://localhost:8080/api/vehicles/count/interval`,
+        {
+          params: {
+            startTime: startTime,
+            endTime: endTime
+          }
+        }
+      );
+      setCountData(response.data);
+    } catch (err) {
+      console.error('Search error:', err);
+      setError('Failed to fetch vehicle count');
     }
     setLoading(false);
   };
@@ -136,6 +169,33 @@ const AdminDashboard = () => {
             </button>
           </div>
         </div>
+
+        {/* Time Interval Search */}
+        <div className="col-md-8">
+          <div className="input-group">
+            <input
+              type="datetime-local"
+              className="form-control"
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
+              placeholder="Start Time"
+            />
+            <input
+              type="datetime-local"
+              className="form-control"
+              value={endTime}
+              onChange={(e) => setEndTime(e.target.value)}
+              placeholder="End Time"
+            />
+            <button 
+              className="btn btn-primary" 
+              onClick={handleTimeIntervalSearch}
+              disabled={!startTime || !endTime}
+            >
+              Search Interval
+            </button>
+          </div>
+        </div>
       </div>
 
       {error && (
@@ -151,27 +211,31 @@ const AdminDashboard = () => {
           </div>
         </div>
       ) : (
-        <VehicleTable 
-        vehicles={vehicles} 
-        onRefresh={handleRefresh}
-        />
+        <>
+          {countData && (
+            <div className="card mb-4">
+              <div className="card-body">
+                <h5 className="card-title">Vehicle Count Summary</h5>
+                <p className="card-text">
+                  Time Period: {new Date(countData.startTime).toLocaleString()} - {new Date(countData.endTime).toLocaleString()}
+                </p>
+                <p className="card-text">
+                  Total Vehicles: <strong>{countData.count}</strong>
+                </p>
+              </div>
+            </div>
+          )}
+
+          {!countData && !loading && (
+            <VehicleTable 
+              vehicles={vehicles} 
+              onRefresh={handleRefresh}
+            />
+          )}
+        </>
       )}
     </div>
   );
 };
 
 export default AdminDashboard;
-
-
-// import ShowAllVehicles from './ShowAllVehicles';
-
-// const AdminDashboard = () => {
-//   return (
-//     <div>
-//       <ShowAllVehicles />
-//       {/* Add more dashboard components here */}
-//     </div>
-//   );
-// };
-
-// export default AdminDashboard;

@@ -1,14 +1,25 @@
-import React, { useState } from 'react';
+import React, { useMemo } from 'react';
 
-const BlockedVehiclesTable = ({ vehicles, onRefresh }) => {
-  const [currentPage, setCurrentPage] = useState(1);
+const BlockedVehiclesTable = ({ 
+  vehicles, 
+  onRefresh, 
+  currentPage, 
+  setCurrentPage,
+  isSearching // Add this prop
+}) => {
   const entriesPerPage = 5;
+
+  // Sort vehicles by blocked date in descending order (newest first)
+  const sortedVehicles = useMemo(() => {
+    return [...vehicles].sort((a, b) => 
+      new Date(b.blockedDate) - new Date(a.blockedDate)
+    );
+  }, [vehicles]);
 
   const indexOfLastEntry = currentPage * entriesPerPage;
   const indexOfFirstEntry = indexOfLastEntry - entriesPerPage;
-  const currentEntries = vehicles.slice(indexOfFirstEntry, indexOfLastEntry);
-  const totalPages = Math.ceil(vehicles.length / entriesPerPage);
-
+  const currentEntries = sortedVehicles.slice(indexOfFirstEntry, indexOfLastEntry);
+  const totalPages = Math.ceil(sortedVehicles.length / entriesPerPage);
   const handlePrevious = () => {
     setCurrentPage(prev => Math.max(prev - 1, 1));
   };
@@ -37,7 +48,18 @@ const BlockedVehiclesTable = ({ vehicles, onRefresh }) => {
   return (
     <div className="mt-4">
       <div className="d-flex justify-content-between align-items-center mb-3">
-        <h3>Blocked Vehicles</h3>
+        <div>
+          <h3>Blocked Vehicles</h3>
+          {/* Only show count when searching and results found */}
+          {isSearching && vehicles.length > 0 && (
+            <div className="text-muted">
+              <span className="badge bg-info">
+                <i className="bi bi-exclamation-circle me-1"></i>
+                This vehicle has been blocked {vehicles.length} time(s)
+              </span>
+            </div>
+          )}
+        </div>
         <button 
           className="btn btn-outline-primary"
           onClick={onRefresh}
