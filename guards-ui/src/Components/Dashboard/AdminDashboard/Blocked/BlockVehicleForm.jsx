@@ -33,7 +33,7 @@ const BlockVehicleForm = ({ onSuccess }) => {
           blockedReason: formData.blockedReason
         });
       } else {
-        await axios.put(`http://localhost:8080/api/blocked-vehicles/allow/${formData.vehicleNumber}`, {
+        await axios.post(`http://localhost:8080/api/blocked-vehicles/allow/${formData.vehicleNumber}`, {
           allowedBy: formData.allowedBy,
           allowedReason: formData.allowedReason
         });
